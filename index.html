@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Shadow Of Intent - Plans</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div id="app" class="app">
+
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-title">Shadow Of Intent</div>
+        <div class="brand-sub">Plans + Annotations</div>
+      </div>
+
+      <div class="topbar-actions">
+        <button id="btnFullscreen" class="btn">Plein ecran</button>
+        <button id="btnPrivacy" class="btn btn-ghost" title="Dissuasion: watermark + blur on blur">Mode discret</button>
+        <button id="btnLogout" class="btn btn-ghost">Deconnexion</button>
+      </div>
+    </header>
+
+    <div class="layout">
+      <aside class="sidebar">
+        <div class="panel">
+          <div class="panel-title">Plans</div>
+
+          <div class="row">
+            <button id="btnNewPlan" class="btn btn-primary">Nouveau plan (upload)</button>
+          </div>
+
+          <div id="planList" class="plan-list"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-title">Partager</div>
+          <div class="hint">
+            En demo la cle est locale
+            En vrai on fera ca cote serveur avec expiration et revocation
+          </div>
+          <div class="row">
+            <button id="btnGenKey" class="btn">Generer cle unique</button>
+          </div>
+          <div class="row">
+            <input id="shareKey" class="input" placeholder="cle de partage" readonly />
+            <button id="btnCopyKey" class="btn btn-ghost">Copier</button>
+          </div>
+        </div>
+      </aside>
+
+      <main class="main">
+        <div class="workspace">
+          <div class="toolbar">
+            <div class="toolgroup">
+              <button class="toolbtn is-active" data-tool="pencil">Crayon</button>
+              <button class="toolbtn" data-tool="arrow">Fleche</button>
+              <button class="toolbtn" data-tool="eraser">Gomme</button>
+            </div>
+
+            <div class="toolgroup">
+              <label class="label">Taille</label>
+              <input id="strokeSize" type="range" min="1" max="18" value="4" />
+              <label class="label">Couleur</label>
+              <input id="strokeColor" type="color" value="#ff2b2b" />
+            </div>
+
+            <div class="toolgroup">
+              <button id="btnUndo" class="btn btn-ghost">Undo</button>
+              <button id="btnRedo" class="btn btn-ghost">Redo</button>
+              <button id="btnClear" class="btn btn-ghost">Effacer</button>
+            </div>
+
+            <div class="toolgroup">
+              <button id="btnExport" class="btn">Exporter PNG</button>
+            </div>
+          </div>
+
+          <div id="canvasShell" class="canvas-shell">
+            <canvas id="board"></canvas>
+            <div id="watermark" class="watermark is-hidden"></div>
+            <div id="privacyBlur" class="privacy-blur is-hidden">Mode discret actif</div>
+          </div>
+
+          <div id="emptyState" class="empty-state">
+            Chargez un plan ou uploadez une capture
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- LOGIN MODAL -->
+  <div id="loginModal" class="modal">
+    <div class="modal-card">
+      <div class="modal-title">Acces securise</div>
+      <div class="modal-sub">Mot de passe ou cle unique</div>
+
+      <div class="row">
+        <input id="loginLabel" class="input" placeholder="Votre nom ou label (pour watermark)" />
+      </div>
+
+      <div class="row">
+        <input id="loginSecret" class="input" placeholder="Mot de passe ou cle" type="password" />
+      </div>
+
+      <div class="row">
+        <button id="b
