@@ -1,103 +1,132 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Plans sécurisés</title>
-  <link rel="stylesheet" href="./style.css" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>SPARTAN - Plans Sécurisés</title>
+  <link rel="stylesheet" href="./style.css">
 </head>
 <body>
   <div class="app">
+    <!-- Header -->
     <header class="topbar">
       <div class="brand">
-        <div class="brand-title">Shadow Of Intent</div>
-        <div class="brand-sub">Plans sécurisés + annotations</div>
+        <h1 class="brand-title">SPARTAN</h1>
+        <p class="brand-sub">Plans sécurisés & annotations</p>
       </div>
       <div class="topbar-actions">
         <span id="sessionPill" class="pill pill-warn">Non authentifié</span>
-        <button id="btnPrivacy" class="btn btn-ghost" title="Masque rapide + watermark">Mode discret</button>
-        <button id="btnFullscreen" class="btn">Plein écran</button>
+        <button id="btnPrivacy" class="btn btn-ghost" title="Mode discret avec watermark">🔒 Discret</button>
+        <button id="btnFullscreen" class="btn">⛶ Plein écran</button>
         <button id="btnLogout" class="btn btn-ghost">Déconnexion</button>
       </div>
     </header>
 
+    <!-- Main Layout -->
     <div class="layout">
+      <!-- Sidebar -->
       <aside class="sidebar">
+        <!-- Authentication & Sharing -->
         <section class="panel">
-          <div class="panel-title">Accès & partage</div>
-          <div class="hint">Mot de passe ou clef unique. Tout reste dans votre navigateur pour la démo.</div>
+          <h2 class="panel-title">Accès & Partage</h2>
+          <p class="hint">Mot de passe principal ou clé unique temporaire (24h). Données stockées localement.</p>
           <div class="row">
-            <button id="btnGenKey" class="btn btn-primary">Générer une clef</button>
-            <input id="shareKey" class="input" placeholder="Clef unique (24h)" readonly />
-            <button id="btnCopyKey" class="btn btn-ghost">Copier</button>
+            <button id="btnGenKey" class="btn btn-primary">Générer clé</button>
+          </div>
+          <div class="row">
+            <input id="shareKey" class="input" type="text" placeholder="Clé unique (24h)" readonly>
+            <button id="btnCopyKey" class="btn btn-ghost" title="Copier la clé">📋</button>
+          </div>
+          <div id="keyExpiry" class="hint is-hidden"></div>
+        </section>
+
+        <!-- Plans Management -->
+        <section class="panel">
+          <h2 class="panel-title">Plans</h2>
+          <div class="row">
+            <button id="btnUpload" class="btn btn-primary">📤 Uploader un plan</button>
+            <input id="fileInput" type="file" accept="image/png,image/jpeg,image/jpg" hidden>
+          </div>
+          <div id="planList" class="plan-list empty">
+            <p>Aucun plan chargé</p>
           </div>
         </section>
 
+        <!-- Notes -->
         <section class="panel">
-          <div class="panel-title">Plans (PNG/JPEG)</div>
-          <div class="row">
-            <button id="btnUpload" class="btn btn-primary">Uploader un plan</button>
-            <input id="fileInput" type="file" accept="image/png,image/jpeg" hidden />
-          </div>
-          <div id="planList" class="plan-list empty">Aucun plan pour l'instant.</div>
-        </section>
-
-        <section class="panel">
-          <div class="panel-title">Notes</div>
+          <h2 class="panel-title">Notes</h2>
           <textarea id="notes" class="notes" placeholder="Checklist, angles à surveiller, codes radio..."></textarea>
         </section>
       </aside>
 
+      <!-- Main Workspace -->
       <main class="main">
         <div class="workspace">
+          <!-- Toolbar -->
           <div class="toolbar">
             <div class="toolgroup">
-              <button class="toolbtn is-active" data-tool="pencil">Crayon</button>
-              <button class="toolbtn" data-tool="arrow">Flèche</button>
-              <button class="toolbtn" data-tool="eraser">Gomme</button>
+              <button class="toolbtn is-active" data-tool="pencil" title="Crayon">✏️ Crayon</button>
+              <button class="toolbtn" data-tool="arrow" title="Flèche">➡️ Flèche</button>
+              <button class="toolbtn" data-tool="eraser" title="Gomme">🧹 Gomme</button>
             </div>
             <div class="toolgroup">
-              <label class="label">Taille</label>
-              <input id="strokeSize" type="range" min="2" max="18" value="4" />
-              <label class="label">Couleur</label>
-              <input id="strokeColor" type="color" value="#ff3b30" />
+              <label class="label" for="strokeSize">Taille</label>
+              <input id="strokeSize" type="range" min="2" max="20" value="4" step="1">
+              <span id="strokeSizeValue" class="label">4px</span>
             </div>
             <div class="toolgroup">
-              <button id="btnUndo" class="btn btn-ghost">Undo</button>
-              <button id="btnRedo" class="btn btn-ghost">Redo</button>
-              <button id="btnClear" class="btn btn-ghost">Effacer</button>
+              <label class="label" for="strokeColor">Couleur</label>
+              <input id="strokeColor" type="color" value="#ff3b30">
             </div>
             <div class="toolgroup">
-              <button id="btnExport" class="btn">Exporter PNG</button>
+              <button id="btnUndo" class="btn btn-ghost" title="Annuler">↶ Undo</button>
+              <button id="btnRedo" class="btn btn-ghost" title="Refaire">↷ Redo</button>
+              <button id="btnClear" class="btn btn-ghost" title="Effacer tout">🗑️ Effacer</button>
+            </div>
+            <div class="toolgroup">
+              <button id="btnExport" class="btn btn-primary" title="Exporter le plan annoté">💾 Exporter PNG</button>
             </div>
           </div>
 
+          <!-- Canvas Area -->
           <div id="canvasShell" class="canvas-shell">
             <canvas id="board"></canvas>
             <div id="watermark" class="watermark is-hidden"></div>
-            <div id="privacyBlur" class="privacy-blur is-hidden">Mode discret actif</div>
-            <div id="emptyState" class="empty-state">Chargez une capture pour commencer.</div>
+            <div id="privacyBlur" class="privacy-blur is-hidden">
+              <div class="privacy-content">
+                <div class="privacy-icon">🔒</div>
+                <div class="privacy-text">Mode discret actif</div>
+              </div>
+            </div>
+            <div id="emptyState" class="empty-state">
+              <div class="empty-icon">📋</div>
+              <p>Chargez une capture d'écran pour commencer</p>
+            </div>
           </div>
         </div>
       </main>
     </div>
   </div>
 
+  <!-- Login Modal -->
   <div id="loginModal" class="modal">
     <div class="modal-card">
-      <div class="modal-title">Accès sécurisé</div>
-      <div class="modal-sub">Mot de passe principal ou clef générée (24h)</div>
+      <h2 class="modal-title">Accès Sécurisé</h2>
+      <p class="modal-sub">Mot de passe principal ou clé unique temporaire</p>
       <form id="loginForm">
-        <div class="row">
-          <input id="loginLabel" class="input" placeholder="Votre label (watermark)" required />
+        <div class="form-group">
+          <label for="loginLabel" class="form-label">Identifiant (watermark)</label>
+          <input id="loginLabel" class="input" type="text" placeholder="Votre identifiant" required autocomplete="off">
         </div>
-        <div class="row">
-          <input id="loginSecret" class="input" type="password" placeholder="Mot de passe ou clef" required />
+        <div class="form-group">
+          <label for="loginSecret" class="form-label">Mot de passe ou clé</label>
+          <input id="loginSecret" class="input" type="password" placeholder="Mot de passe ou clé unique" required autocomplete="off">
         </div>
-        <div class="row">
-          <button id="btnLogin" type="submit" class="btn btn-primary">Déverrouiller</button>
+        <div class="form-group">
+          <button id="btnLogin" type="submit" class="btn btn-primary btn-block">🔓 Déverrouiller</button>
         </div>
-        <div id="loginError" class="error is-hidden">Secret invalide ou expiré.</div>
+        <div id="loginError" class="error is-hidden">Secret invalide ou clé expirée</div>
       </form>
     </div>
   </div>
