@@ -254,3 +254,42 @@ body{
 }
 .modal-title{ font-size:18px; font-weight:850; }
 .modal-sub{ color:var(--muted); margin:6px 0 10px 0; font-size:13px; }
+
+.pill{
+  padding:6px 10px;
+  border-radius:999px;
+  font-weight:700;
+  font-size:12px;
+  border:1px solid transparent;
+}
+.pill-ok{ background: rgba(70,211,154,.14); color:#6af0b7; border-color: rgba(70,211,154,.45); }
+.pill-warn{ background: rgba(255,211,77,.16); color:#ffd34d; border-color: rgba(255,211,77,.4); }
+
+.notes{
+  width:100%;
+  min-height:140px;
+  background: rgba(10,12,18,.65);
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:10px;
+  color: var(--text);
+  resize: vertical;
+}
+
+.error{
+  color:#ff6b6b;
+  font-weight:700;
+  margin-top:6px;
+}
+
+.plan-list.empty{
+  color: var(--muted);
+  text-align:center;
+  border:1px dashed var(--line);
+  padding:14px;
+  border-radius:12px;
+}
+
+.canvas-shell{
+  position:relative;
+}
