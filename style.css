@@ -226,6 +226,19 @@ body {
   font-size: 11px;
 }
 
+.plan-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.btn-small {
+  padding: 6px 10px;
+  font-size: 11px;
+}
+
 /* ============================================================================
    MAIN WORKSPACE
    ============================================================================ */
@@ -300,6 +313,13 @@ body {
   border-color: rgba(255, 211, 77, 0.9);
   box-shadow: 0 0 0 1px rgba(255, 211, 77, 0.2);
   background: rgba(255, 211, 77, 0.15);
+  color: var(--accent);
+}
+
+.btn.is-active {
+  border-color: rgba(255, 211, 77, 0.9);
+  box-shadow: 0 0 0 1px rgba(255, 211, 77, 0.2);
+  background: rgba(255, 211, 77, 0.2);
   color: var(--accent);
 }
 
@@ -401,6 +421,17 @@ input[type="color"]::-webkit-color-swatch {
   border-radius: var(--radius-sm);
 }
 
+select.input {
+  padding: 8px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.input-small {
+  width: auto;
+  min-width: 120px;
+}
+
 /* ============================================================================
    TEXTAREA
    ============================================================================ */
@@ -440,6 +471,14 @@ input[type="color"]::-webkit-color-swatch {
   background: radial-gradient(1200px 600px at 50% 30%, rgba(255, 211, 77, 0.06) 0%, transparent 60%),
               linear-gradient(180deg, rgba(9, 11, 16, 0.8) 0%, rgba(11, 14, 20, 0.9) 100%);
   overflow: hidden;
+}
+
+#rulerCanvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 5;
 }
 
 #board {
@@ -604,6 +643,33 @@ input[type="color"]::-webkit-color-swatch {
 }
 
 /* ============================================================================
+   TEXT INPUT OVERLAY
+   ============================================================================ */
+
+.text-input-overlay {
+  position: absolute;
+  z-index: 15;
+  pointer-events: auto;
+}
+
+.text-input {
+  background: rgba(255, 255, 255, 0.95);
+  border: 2px solid var(--accent);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  font-size: 16px;
+  color: #000;
+  min-width: 200px;
+  outline: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.text-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 4px 16px rgba(255, 211, 77, 0.4);
+}
+
+/* ============================================================================
    UTILITIES
    ============================================================================ */
 
@@ -635,4 +701,117 @@ input[type="color"]::-webkit-color-swatch {
 ::selection {
   background: rgba(255, 211, 77, 0.3);
   color: var(--text);
+}
+
+/* ============================================================================
+   ALLIANCES
+   ============================================================================ */
+
+.alliance-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 30vh;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.alliance-list.empty {
+  color: var(--text-muted);
+  text-align: center;
+  border: 1px dashed var(--border);
+  padding: 20px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60px;
+}
+
+.alliance-item {
+  border: 1px solid var(--border);
+  background: rgba(15, 20, 32, 0.65);
+  border-radius: var(--radius-md);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.alliance-item:hover {
+  border-color: var(--border-hover);
+  background: rgba(15, 20, 32, 0.85);
+}
+
+.alliance-name {
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.alliance-meta {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-family: monospace;
+}
+
+.alliance-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.btn-tiny {
+  padding: 4px 8px;
+  font-size: 10px;
+  min-width: auto;
+}
+
+/* ============================================================================
+   FOOTER
+   ============================================================================ */
+
+.footer {
+  height: 48px;
+  border-top: 1px solid var(--border);
+  background: rgba(10, 12, 18, 0.7);
+  backdrop-filter: blur(10px);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 20px;
+}
+
+.footer-content {
+  width: 100%;
+  max-width: 1400px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.footer-copyright {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.footer-link {
+  color: var(--accent);
+  text-decoration: none;
+  transition: color 0.15s ease;
+  font-weight: 600;
+}
+
+.footer-link:hover {
+  color: var(--text);
+  text-decoration: underline;
+}
+
+.footer-brand {
+  font-weight: 600;
+  color: var(--text-muted);
 }

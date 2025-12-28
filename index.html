@@ -43,7 +43,10 @@
 
         <!-- Plans Management -->
         <section class="panel">
-          <h2 class="panel-title">Plans</h2>
+          <h2 class="panel-title">Plans & Pages</h2>
+          <div class="row">
+            <button id="btnNewPage" class="btn btn-primary">➕ Nouvelle page</button>
+          </div>
           <div class="row">
             <button id="btnUpload" class="btn btn-primary">📤 Uploader un plan</button>
             <input id="fileInput" type="file" accept="image/png,image/jpeg,image/jpg" hidden>
@@ -51,12 +54,28 @@
           <div id="planList" class="plan-list empty">
             <p>Aucun plan chargé</p>
           </div>
+          <div class="plan-actions" id="planActions" style="display: none;">
+            <button id="btnDeletePlan" class="btn btn-ghost btn-small">🗑️ Supprimer</button>
+            <button id="btnDuplicatePlan" class="btn btn-ghost btn-small">📋 Dupliquer</button>
+          </div>
         </section>
 
         <!-- Notes -->
         <section class="panel">
           <h2 class="panel-title">Notes</h2>
           <textarea id="notes" class="notes" placeholder="Checklist, angles à surveiller, codes radio..."></textarea>
+        </section>
+
+        <!-- Alliances -->
+        <section class="panel">
+          <h2 class="panel-title">Alliances</h2>
+          <p class="hint">Gérer les alliances et partages de plans</p>
+          <div class="row">
+            <button id="btnAddAlliance" class="btn btn-primary">➕ Ajouter alliance</button>
+          </div>
+          <div id="allianceList" class="alliance-list empty">
+            <p>Aucune alliance</p>
+          </div>
         </section>
       </aside>
 
@@ -66,18 +85,48 @@
           <!-- Toolbar -->
           <div class="toolbar">
             <div class="toolgroup">
+              <button class="toolbtn" data-tool="select" title="Sélection (V)">🖱️ Sélection</button>
               <button class="toolbtn is-active" data-tool="pencil" title="Crayon">✏️ Crayon</button>
+              <button class="toolbtn" data-tool="line" title="Trait">📏 Trait</button>
               <button class="toolbtn" data-tool="arrow" title="Flèche">➡️ Flèche</button>
-              <button class="toolbtn" data-tool="eraser" title="Gomme">🧹 Gomme</button>
+              <button class="toolbtn" data-tool="text" title="Texte">📝 Texte</button>
+              <button class="toolbtn" data-tool="eraser" title="Gomme vectorielle">🧹 Vectoriel</button>
+              <button class="toolbtn" data-tool="eraser-pixel" title="Gomme pixel">🎨 Pixel</button>
             </div>
-            <div class="toolgroup">
+            <div class="toolgroup" id="strokeControls">
               <label class="label" for="strokeSize">Taille</label>
               <input id="strokeSize" type="range" min="2" max="20" value="4" step="1">
               <span id="strokeSizeValue" class="label">4px</span>
             </div>
-            <div class="toolgroup">
+            <div class="toolgroup" id="colorControls">
               <label class="label" for="strokeColor">Couleur</label>
               <input id="strokeColor" type="color" value="#ff3b30">
+            </div>
+            <div class="toolgroup is-hidden" id="textControls">
+              <label class="label" for="textFontSize">Taille texte</label>
+              <input id="textFontSize" type="range" min="12" max="48" value="16" step="2">
+              <span id="textFontSizeValue" class="label">16px</span>
+            </div>
+            <div class="toolgroup is-hidden" id="textControls2">
+              <label class="label" for="textFontFamily">Police</label>
+              <select id="textFontFamily" class="input input-small">
+                <option value="Arial">Arial</option>
+                <option value="Helvetica">Helvetica</option>
+                <option value="Times New Roman">Times New Roman</option>
+                <option value="Courier New">Courier New</option>
+                <option value="Verdana">Verdana</option>
+                <option value="Georgia">Georgia</option>
+              </select>
+            </div>
+            <div class="toolgroup is-hidden" id="textControls3">
+              <label class="label" for="textBgColor">Arrière-plan</label>
+              <input id="textBgColor" type="color" value="#ffffff">
+              <label class="label" for="textBgOpacity">Opacité</label>
+              <input id="textBgOpacity" type="range" min="0" max="100" value="80" step="10">
+              <span id="textBgOpacityValue" class="label">80%</span>
+            </div>
+            <div class="toolgroup">
+              <button id="btnRuler" class="btn btn-ghost" title="Afficher la règle">📐 Règle</button>
             </div>
             <div class="toolgroup">
               <button id="btnUndo" class="btn btn-ghost" title="Annuler">↶ Undo</button>
@@ -91,6 +140,7 @@
 
           <!-- Canvas Area -->
           <div id="canvasShell" class="canvas-shell">
+            <canvas id="rulerCanvas"></canvas>
             <canvas id="board"></canvas>
             <div id="watermark" class="watermark is-hidden"></div>
             <div id="privacyBlur" class="privacy-blur is-hidden">
@@ -102,6 +152,10 @@
             <div id="emptyState" class="empty-state">
               <div class="empty-icon">📋</div>
               <p>Chargez une capture d'écran pour commencer</p>
+            </div>
+            <!-- Text input overlay -->
+            <div id="textInputOverlay" class="text-input-overlay is-hidden">
+              <input id="textInput" type="text" placeholder="Tapez votre texte..." class="text-input">
             </div>
           </div>
         </div>
@@ -130,6 +184,21 @@
       </form>
     </div>
   </div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-content">
+      <div class="footer-copyright">
+        <span>© 2024 La Commune de France</span>
+        <a href="https://discord.me/lacommune" target="_blank" rel="noopener noreferrer" class="footer-link">
+          discord.me/lacommune
+        </a>
+      </div>
+      <div class="footer-brand">
+        <span>SPARTAN - Plans Sécurisés</span>
+      </div>
+    </div>
+  </footer>
 
   <script src="./app.js"></script>
 </body>
