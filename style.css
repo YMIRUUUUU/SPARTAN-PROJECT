@@ -659,14 +659,27 @@ select.input {
   padding: 8px 12px;
   font-size: 16px;
   color: #000;
-  min-width: 200px;
+  min-width: 250px;
+  min-height: 40px;
+  max-width: 400px;
+  max-height: 200px;
+  width: auto;
+  height: auto;
+  resize: both;
   outline: none;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  font-family: inherit;
+  line-height: 1.4;
 }
 
 .text-input:focus {
   border-color: var(--accent);
   box-shadow: 0 4px 16px rgba(255, 211, 77, 0.4);
+}
+
+.text-input::placeholder {
+  color: #666;
+  font-style: italic;
 }
 
 /* ============================================================================
@@ -814,4 +827,138 @@ select.input {
 .footer-brand {
   font-weight: 600;
   color: var(--text-muted);
+}
+
+/* ============================================================================
+   NEW FEATURES STYLES
+   ============================================================================ */
+
+/* Feature 4: Légende */
+.search-results {
+  max-height: 300px;
+  overflow-y: auto;
+  margin: 10px 0;
+}
+
+.search-result {
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  margin: 4px 0;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.search-result:hover {
+  background: rgba(255, 211, 77, 0.1);
+  border-color: var(--accent);
+}
+
+/* Feature 7: Calques */
+.layer-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 30vh;
+  overflow-y: auto;
+}
+
+.layer-item {
+  border: 1px solid var(--border);
+  background: rgba(15, 20, 32, 0.65);
+  border-radius: var(--radius-md);
+  padding: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.layer-item.is-active {
+  border-color: var(--accent);
+}
+
+.layer-name {
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.layer-actions {
+  display: flex;
+  gap: 6px;
+}
+
+/* Feature 3: Stamps */
+.stamp-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 30vh;
+  overflow-y: auto;
+}
+
+.stamp-item {
+  border: 1px solid var(--border);
+  background: rgba(15, 20, 32, 0.65);
+  border-radius: var(--radius-md);
+  padding: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.stamp-name {
+  font-weight: 600;
+  font-size: 12px;
+}
+
+/* Feature 10: Présentation */
+.presentation-mode {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: rgba(0, 0, 0, 0.95);
+}
+
+.presentation-controls {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 20px;
+  background: rgba(17, 22, 34, 0.9);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+/* Feature 13: Templates */
+.template-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 30vh;
+  overflow-y: auto;
+}
+
+.template-item {
+  border: 1px solid var(--border);
+  background: rgba(15, 20, 32, 0.65);
+  border-radius: var(--radius-md);
+  padding: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Error message */
+.error {
+  color: var(--danger);
+  font-size: 12px;
+  margin-top: 8px;
+  padding: 8px;
+  background: rgba(255, 59, 48, 0.1);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 59, 48, 0.3);
 }

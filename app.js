@@ -24,6 +24,12 @@ const STORAGE_KEYS = {
   notes: `spartan_notes_${CONFIG.STORAGE_VERSION}`,
   shareKeys: `spartan_share_keys_${CONFIG.STORAGE_VERSION}`,
   alliances: `spartan_alliances_${CONFIG.STORAGE_VERSION}`,
+  layers: `spartan_layers_${CONFIG.STORAGE_VERSION}`,
+  stamps: `spartan_stamps_${CONFIG.STORAGE_VERSION}`,
+  templates: `spartan_templates_${CONFIG.STORAGE_VERSION}`,
+  theme: `spartan_theme_${CONFIG.STORAGE_VERSION}`,
+  history: `spartan_history_${CONFIG.STORAGE_VERSION}`,
+  scale: `spartan_scale_${CONFIG.STORAGE_VERSION}`,
 };
 
 // ============================================================================
@@ -54,9 +60,35 @@ const state = {
     dragOffset: { x: 0, y: 0 },
   },
   ruler: { enabled: false, gridSize: 20 },
-  transform: { scale: 1, ox: 0, oy: 0 },
+  transform: { scale: 1, ox: 0, oy: 0, zoom: 1, panX: 0, panY: 0 },
   img: null,
   alliances: [],
+  // Feature 1: Formes géométriques
+  previewShape: null, // { type: "rect"|"circle"|"polygon", x1, y1, x2, y2, ... }
+  // Feature 2: Mesure
+  measuring: false,
+  measurement: null, // { x1, y1, x2, y2, distance, scale }
+  planScale: { enabled: false, ratio: 1, unit: "m" }, // 1px = X unités
+  // Feature 3: Stamps
+  stamps: [],
+  selectedStamp: null,
+  // Feature 4: Légende
+  legend: { visible: false },
+  // Feature 7: Calques
+  layers: [], // [{ id, name, visible, locked, strokes: [] }]
+  activeLayerId: null,
+  // Feature 8: Recherche
+  search: { query: "", results: [], activeIndex: -1 },
+  // Feature 9: Filtres image
+  imageFilters: { brightness: 100, contrast: 100, saturation: 100, invert: false },
+  // Feature 10: Présentation
+  presentation: { active: false, currentPage: 0, timer: null },
+  // Feature 12: Thème
+  theme: "dark", // "dark" | "light" | "custom"
+  customTheme: null,
+  // Feature 14: Historique
+  history: [], // Timeline des modifications
+  historyIndex: -1,
 };
 
 // ============================================================================
@@ -635,6 +667,8 @@ const canvas = {
 
   drawText(textObj) {
     const { x, y, text, fontSize, fontFamily, color, bgColor, bgOpacity } = textObj;
+    if (!text || text.trim() === "") return;
+    
     const p = this.imageToCanvas(x, y);
     
     ctx.save();
@@ -642,22 +676,190 @@ const canvas = {
     ctx.textBaseline = "top";
     ctx.textAlign = "left";
     
-    const metrics = ctx.measureText(text);
-    const textWidth = metrics.width;
-    const textHeight = fontSize * 1.2;
+    // Handle multi-line text
+    const lines = text.split('\n');
+    const lineHeight = fontSize * 1.2;
+    let maxWidth = 0;
+    
+    // Calculate max width
+    lines.forEach(line => {
+      const metrics = ctx.measureText(line);
+      maxWidth = Math.max(maxWidth, metrics.width);
+    });
+    
+    const totalHeight = lines.length * lineHeight;
     
     // Draw background
     if (bgColor && bgOpacity > 0) {
       const alpha = bgOpacity / 100;
       ctx.fillStyle = bgColor;
       ctx.globalAlpha = alpha;
-      ctx.fillRect(p.x - 4, p.y - 2, textWidth + 8, textHeight + 4);
+      ctx.fillRect(p.x - 4, p.y - 2, maxWidth + 8, totalHeight + 4);
       ctx.globalAlpha = 1;
     }
     
-    // Draw text
+    // Draw text lines
     ctx.fillStyle = color;
-    ctx.fillText(text, p.x, p.y);
+    lines.forEach((line, index) => {
+      ctx.fillText(line, p.x, p.y + (index * lineHeight));
+    });
+    
+    ctx.restore();
+  },
+
+  // Feature 1: Formes géométriques
+  drawRect(x1, y1, x2, y2, color, width, filled, radius) {
+    const p1 = this.imageToCanvas(x1, y1);
+    const p2 = this.imageToCanvas(x2, y2);
+    const left = Math.min(p1.x, p2.x);
+    const top = Math.min(p1.y, p2.y);
+    const width_rect = Math.abs(p2.x - p1.x);
+    const height = Math.abs(p2.y - p1.y);
+    
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.fillStyle = color;
+    ctx.lineWidth = width;
+    
+    if (filled) {
+      if (radius > 0) {
+        this.roundRect(left, top, width_rect, height, radius, true);
+      } else {
+        ctx.fillRect(left, top, width_rect, height);
+      }
+    } else {
+      if (radius > 0) {
+        this.roundRect(left, top, width_rect, height, radius, false);
+      } else {
+        ctx.strokeRect(left, top, width_rect, height);
+      }
+    }
+    ctx.restore();
+  },
+
+  drawCircle(x1, y1, x2, y2, color, width, filled) {
+    const p1 = this.imageToCanvas(x1, y1);
+    const p2 = this.imageToCanvas(x2, y2);
+    const centerX = (p1.x + p2.x) / 2;
+    const centerY = (p1.y + p2.y) / 2;
+    const radius = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2)) / 2;
+    
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.fillStyle = color;
+    ctx.lineWidth = width;
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+    if (filled) {
+      ctx.fill();
+    } else {
+      ctx.stroke();
+    }
+    ctx.restore();
+  },
+
+  drawPolygon(points, color, width, filled) {
+    if (points.length < 3) return;
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.fillStyle = color;
+    ctx.lineWidth = width;
+    ctx.beginPath();
+    const p0 = this.imageToCanvas(points[0].x, points[0].y);
+    ctx.moveTo(p0.x, p0.y);
+    for (let i = 1; i < points.length; i++) {
+      const p = this.imageToCanvas(points[i].x, points[i].y);
+      ctx.lineTo(p.x, p.y);
+    }
+    ctx.closePath();
+    if (filled) {
+      ctx.fill();
+    }
+    ctx.stroke();
+    ctx.restore();
+  },
+
+  roundRect(x, y, width, height, radius, fill) {
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(x + width - radius, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+    ctx.lineTo(x + width, y + height - radius);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+    ctx.lineTo(x + radius, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+    ctx.lineTo(x, y + radius);
+    ctx.quadraticCurveTo(x, y, x + radius, y);
+    ctx.closePath();
+    if (fill) {
+      ctx.fill();
+    } else {
+      ctx.stroke();
+    }
+  },
+
+  // Feature 3: Stamps
+  drawStamp(stampObj) {
+    const { x, y, stampId, scale } = stampObj;
+    const stamp = state.stamps.find(s => s.id === stampId);
+    if (!stamp) return;
+    
+    const p = this.imageToCanvas(x, y);
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.scale(scale || 1, scale || 1);
+    
+    // Draw stamp (simplified - would need actual stamp data)
+    ctx.strokeStyle = stamp.color || "#ff3b30";
+    ctx.fillStyle = stamp.color || "#ff3b30";
+    ctx.font = "20px Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(stamp.name || "STAMP", 0, 0);
+    
+    ctx.restore();
+  },
+
+  // Feature 2: Mesure
+  drawMeasurement(measurement) {
+    if (!measurement) return;
+    const { x1, y1, x2, y2, distance, scale } = measurement;
+    const p1 = this.imageToCanvas(x1, y1);
+    const p2 = this.imageToCanvas(x2, y2);
+    
+    ctx.save();
+    ctx.strokeStyle = "#4a9eff";
+    ctx.fillStyle = "#4a9eff";
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 5]);
+    
+    // Draw line
+    ctx.beginPath();
+    ctx.moveTo(p1.x, p1.y);
+    ctx.lineTo(p2.x, p2.y);
+    ctx.stroke();
+    
+    // Draw endpoints
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.arc(p1.x, p1.y, 4, 0, Math.PI * 2);
+    ctx.arc(p2.x, p2.y, 4, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Draw distance label
+    const midX = (p1.x + p2.x) / 2;
+    const midY = (p1.y + p2.y) / 2;
+    const pixelDist = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+    const realDist = scale.enabled ? (pixelDist / state.transform.scale * scale.ratio).toFixed(2) + scale.unit : pixelDist.toFixed(0) + "px";
+    
+    ctx.fillStyle = "rgba(74, 158, 255, 0.9)";
+    ctx.fillRect(midX - 40, midY - 15, 80, 20);
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "12px Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(realDist, midX, midY);
+    
     ctx.restore();
   },
 
@@ -798,6 +1000,16 @@ const canvas = {
         this.drawArrow(s.x1, s.y1, s.x2, s.y2, s.color, s.width);
       } else if (s.type === "text") {
         this.drawText(s);
+      } else if (s.type === "rect") {
+        this.drawRect(s.x1, s.y1, s.x2, s.y2, s.color, s.width, s.filled, s.radius || 0);
+      } else if (s.type === "circle") {
+        this.drawCircle(s.x1, s.y1, s.x2, s.y2, s.color, s.width, s.filled);
+      } else if (s.type === "polygon") {
+        this.drawPolygon(s.points, s.color, s.width, s.filled);
+      } else if (s.type === "measurement") {
+        this.drawMeasurement(s);
+      } else if (s.type === "stamp") {
+        this.drawStamp(s);
       }
     }
 
@@ -822,6 +1034,23 @@ const canvas = {
       this.drawArrow(a.x1, a.y1, a.x2, a.y2, a.color, a.width);
     }
 
+    // Preview shapes
+    if (state.previewShape) {
+      const shape = state.previewShape;
+      if (shape.type === "rect") {
+        this.drawRect(shape.x1, shape.y1, shape.x2, shape.y2, shape.color, shape.width, shape.filled, shape.radius || 0);
+      } else if (shape.type === "circle") {
+        this.drawCircle(shape.x1, shape.y1, shape.x2, shape.y2, shape.color, shape.width, shape.filled);
+      } else if (shape.type === "polygon") {
+        this.drawPolygon(shape.points, shape.color, shape.width, shape.filled);
+      }
+    }
+
+    // Preview measurement
+    if (state.measuring && state.measurement) {
+      this.drawMeasurement(state.measurement);
+    }
+
     // Draw selection box
     if (state.selection.box) {
       this.drawSelectionBox(state.selection.box);
@@ -830,6 +1059,11 @@ const canvas = {
     // Draw selection handles
     if (state.selection.selectedItems.length > 0) {
       this.drawSelectionHandles(state.selection.selectedItems);
+    }
+
+    // Draw text preview while editing
+    if (state.textEditing && state.textEditing.text) {
+      this.drawText(state.textEditing);
     }
 
     // Draw pixel eraser preview
@@ -867,6 +1101,12 @@ const canvas = {
 
   onPointerDown(ev) {
     if (!state.session.authed || !state.img) return;
+    
+    // Don't handle canvas clicks if clicking on text input overlay
+    if (ev.target.closest('#textInputOverlay')) {
+      return;
+    }
+    
     const p = this.pointerPos(ev);
     const layer = plans.ensureLayer(state.activePlanId);
 
@@ -925,6 +1165,63 @@ const canvas = {
       if (!this.insideImage(p.x, p.y)) return;
       const imgP = this.canvasToImage(p.x, p.y);
       this.startTextEdit(imgP.x, imgP.y);
+    } else if (state.tool === "rect" || state.tool === "circle") {
+      if (!this.insideImage(p.x, p.y)) return;
+      state.drawing = true;
+      const imgP = this.canvasToImage(p.x, p.y);
+      state.previewShape = {
+        type: state.tool,
+        x1: imgP.x,
+        y1: imgP.y,
+        x2: imgP.x,
+        y2: imgP.y,
+        color: els.strokeColor.value,
+        width: Number(els.strokeSize.value),
+        filled: $("#shapeFilled")?.checked || false,
+        radius: Number($("#shapeRadius")?.value || 0),
+      };
+    } else if (state.tool === "polygon") {
+      if (!this.insideImage(p.x, p.y)) return;
+      const imgP = this.canvasToImage(p.x, p.y);
+      if (!state.previewShape || state.previewShape.type !== "polygon") {
+        state.previewShape = {
+          type: "polygon",
+          points: [imgP],
+          color: els.strokeColor.value,
+          width: Number(els.strokeSize.value),
+          filled: $("#shapeFilled")?.checked || false,
+        };
+      } else {
+        state.previewShape.points.push(imgP);
+      }
+    } else if (state.tool === "measure") {
+      if (!this.insideImage(p.x, p.y)) return;
+      state.measuring = true;
+      const imgP = this.canvasToImage(p.x, p.y);
+      state.measurement = {
+        x1: imgP.x,
+        y1: imgP.y,
+        x2: imgP.x,
+        y2: imgP.y,
+        distance: 0,
+        scale: state.planScale,
+      };
+    } else if (state.tool === "stamp") {
+      if (!this.insideImage(p.x, p.y)) return;
+      if (state.selectedStamp) {
+        const imgP = this.canvasToImage(p.x, p.y);
+        const layer = plans.ensureLayer(state.activePlanId);
+        layer.strokes.push({
+          type: "stamp",
+          x: imgP.x,
+          y: imgP.y,
+          stampId: state.selectedStamp.id,
+          scale: 1,
+        });
+        layer.redo = [];
+        plans.save();
+        this.render();
+      }
     } else if (state.tool === "eraser") {
       state.eraserMode = "vector";
       this.eraseNearby(p, layer);
@@ -1002,6 +1299,16 @@ const canvas = {
       const imgP = this.canvasToImage(p.x, p.y);
       state.previewArrow.x2 = imgP.x;
       state.previewArrow.y2 = imgP.y;
+    } else if ((state.tool === "rect" || state.tool === "circle") && state.previewShape) {
+      const imgP = this.canvasToImage(p.x, p.y);
+      state.previewShape.x2 = imgP.x;
+      state.previewShape.y2 = imgP.y;
+    } else if (state.tool === "measure" && state.measurement) {
+      const imgP = this.canvasToImage(p.x, p.y);
+      state.measurement.x2 = imgP.x;
+      state.measurement.y2 = imgP.y;
+      const pixelDist = Math.hypot(state.measurement.x2 - state.measurement.x1, state.measurement.y2 - state.measurement.y1);
+      state.measurement.distance = pixelDist;
     }
     this.render();
   },
@@ -1044,6 +1351,13 @@ const canvas = {
       layer.strokes.push({ ...state.previewLine, type: "line" });
     } else if (state.tool === "arrow" && state.previewArrow) {
       layer.strokes.push({ ...state.previewArrow, type: "arrow" });
+    } else if ((state.tool === "rect" || state.tool === "circle") && state.previewShape) {
+      layer.strokes.push({ ...state.previewShape, type: state.tool });
+      state.previewShape = null;
+    } else if (state.tool === "measure" && state.measurement) {
+      layer.strokes.push({ ...state.measurement, type: "measurement" });
+      state.measuring = false;
+      state.measurement = null;
     }
 
     layer.redo = [];
@@ -1056,6 +1370,11 @@ const canvas = {
   },
 
   startTextEdit(x, y) {
+    // Prevent starting text edit if already editing
+    if (state.textEditing) {
+      this.finishTextEdit();
+    }
+
     state.textEditing = {
       x,
       y,
@@ -1067,19 +1386,42 @@ const canvas = {
       bgOpacity: Number(els.textBgOpacity.value),
     };
     const p = this.imageToCanvas(x, y);
-    els.textInputOverlay.style.left = `${p.x}px`;
-    els.textInputOverlay.style.top = `${p.y}px`;
+    
+    // Ensure the overlay stays within canvas bounds
+    const rect = els.canvasShell.getBoundingClientRect();
+    const maxX = rect.width - 250; // Account for input width
+    const maxY = rect.height - 100; // Account for input height
+    const left = Math.max(10, Math.min(p.x, maxX));
+    const top = Math.max(10, Math.min(p.y, maxY));
+    
+    els.textInputOverlay.style.left = `${left}px`;
+    els.textInputOverlay.style.top = `${top}px`;
     els.textInputOverlay.classList.remove("is-hidden");
     els.textInput.value = "";
-    els.textInput.focus();
+    
+    // Use setTimeout to ensure the overlay is visible before focusing
+    setTimeout(() => {
+      els.textInput.focus();
+      els.textInput.select();
+    }, 10);
   },
 
   finishTextEdit() {
-    if (!state.textEditing || !state.textEditing.text.trim()) {
+    if (!state.textEditing) {
+      els.textInputOverlay.classList.add("is-hidden");
+      return;
+    }
+
+    // Always read from the input field to ensure we have the latest value
+    const textValue = els.textInput.value.trim();
+    if (!textValue) {
       state.textEditing = null;
       els.textInputOverlay.classList.add("is-hidden");
       return;
     }
+
+    // Update the text in state
+    state.textEditing.text = textValue;
 
     const layer = plans.ensureLayer(state.activePlanId);
     layer.strokes.push({
@@ -1332,12 +1674,14 @@ const toolbar = {
     const isText = state.tool === "text";
     const isDrawing = ["pencil", "line", "arrow", "eraser-pixel"].includes(state.tool);
     const isEraser = ["eraser", "eraser-pixel"].includes(state.tool);
+    const isShape = ["rect", "circle", "polygon"].includes(state.tool);
     
-    els.strokeControls.classList.toggle("is-hidden", !isDrawing);
-    els.colorControls.classList.toggle("is-hidden", !isDrawing && !isEraser);
+    els.strokeControls.classList.toggle("is-hidden", !isDrawing && !isShape);
+    els.colorControls.classList.toggle("is-hidden", !isDrawing && !isEraser && !isShape);
     els.textControls.classList.toggle("is-hidden", !isText);
     els.textControls2.classList.toggle("is-hidden", !isText);
     els.textControls3.classList.toggle("is-hidden", !isText);
+    $("#shapeControls").style.display = isShape ? "flex" : "none";
   },
 
   updateStrokeSize() {
@@ -1433,6 +1777,394 @@ const alliances = {
 };
 
 // ============================================================================
+// FEATURE 1-15: NEW FEATURES MODULES
+// ============================================================================
+
+// Feature 5: Zoom & Navigation
+const zoom = {
+  setZoom(level) {
+    state.transform.zoom = Math.max(0.1, Math.min(5, level));
+    canvas.recomputeTransform();
+    canvas.render();
+  },
+  
+  zoomIn() {
+    this.setZoom(state.transform.zoom * 1.2);
+  },
+  
+  zoomOut() {
+    this.setZoom(state.transform.zoom / 1.2);
+  },
+  
+  zoomFit() {
+    state.transform.zoom = 1;
+    state.transform.panX = 0;
+    state.transform.panY = 0;
+    canvas.recomputeTransform();
+    canvas.render();
+  },
+};
+
+// Feature 6: Export Multi-format
+const exportManager = {
+  async exportPDF() {
+    if (!state.session.authed || !state.img) return;
+    // Simple PDF export using canvas (would need jsPDF library for full support)
+    const canvas = els.board;
+    const imgData = canvas.toDataURL("image/png");
+    const pdfWindow = window.open();
+    pdfWindow.document.write(`<img src="${imgData}" style="max-width:100%;height:auto;">`);
+  },
+  
+  exportSVG() {
+    if (!state.session.authed || !state.img) return;
+    const svg = this.canvasToSVG();
+    const blob = new Blob([svg], { type: "image/svg+xml" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `spartan_${state.session.label || "plan"}_${Date.now()}.svg`;
+    a.click();
+    URL.revokeObjectURL(url);
+  },
+  
+  canvasToSVG() {
+    const w = els.board.width;
+    const h = els.board.height;
+    let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}">`;
+    svg += `<image href="${state.plans.find(p => p.id === state.activePlanId)?.dataUrl}" width="${w}" height="${h}"/>`;
+    // Add annotations as SVG paths (simplified)
+    svg += "</svg>";
+    return svg;
+  },
+};
+
+// Feature 4: Légende
+const legend = {
+  generate() {
+    const layer = plans.ensureLayer(state.activePlanId);
+    const counts = {};
+    layer.strokes.forEach(s => {
+      counts[s.type] = (counts[s.type] || 0) + 1;
+    });
+    return counts;
+  },
+  
+  show() {
+    const counts = this.generate();
+    const content = $("#legendContent");
+    content.innerHTML = "<h3>Légende des annotations</h3>";
+    const list = document.createElement("ul");
+    Object.entries(counts).forEach(([type, count]) => {
+      const li = document.createElement("li");
+      li.textContent = `${type}: ${count}`;
+      list.appendChild(li);
+    });
+    content.appendChild(list);
+    $("#legendModal").classList.remove("is-hidden");
+  },
+};
+
+// Feature 8: Recherche
+const search = {
+  perform(query) {
+    if (!query.trim()) return [];
+    const layer = plans.ensureLayer(state.activePlanId);
+    const results = [];
+    layer.strokes.forEach((stroke, index) => {
+      if (stroke.type === "text" && stroke.text.toLowerCase().includes(query.toLowerCase())) {
+        results.push({ type: "text", index, stroke });
+      }
+    });
+    // Also search in notes
+    if (els.notes.value.toLowerCase().includes(query.toLowerCase())) {
+      results.push({ type: "note", index: -1 });
+    }
+    return results;
+  },
+  
+  show() {
+    $("#searchModal").classList.remove("is-hidden");
+    $("#searchInput").focus();
+  },
+  
+  displayResults(results) {
+    const container = $("#searchResults");
+    container.innerHTML = "";
+    if (results.length === 0) {
+      container.innerHTML = "<p>Aucun résultat</p>";
+      return;
+    }
+    results.forEach((result, idx) => {
+      const div = document.createElement("div");
+      div.className = "search-result";
+      div.textContent = result.type === "text" ? result.stroke.text : "Note";
+      div.addEventListener("click", () => {
+        if (result.type === "text") {
+          // Highlight the text annotation
+          state.selection.selectedItems = [{ type: "text", index: result.index }];
+          canvas.render();
+        }
+      });
+      container.appendChild(div);
+    });
+  },
+};
+
+// Feature 9: Filtres Image
+const imageFilters = {
+  apply() {
+    if (!state.img) return;
+    const { brightness, contrast, saturation, invert } = state.imageFilters;
+    const filter = `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%) ${invert ? "invert(1)" : ""}`;
+    els.board.style.filter = filter;
+  },
+  
+  reset() {
+    state.imageFilters = { brightness: 100, contrast: 100, saturation: 100, invert: false };
+    this.apply();
+    $("#brightnessSlider").value = 100;
+    $("#contrastSlider").value = 100;
+    $("#saturationSlider").value = 100;
+    $("#invertColors").checked = false;
+    $("#brightnessValue").textContent = "100";
+    $("#contrastValue").textContent = "100";
+    $("#saturationValue").textContent = "100";
+  },
+};
+
+// Feature 7: Calques
+const layers = {
+  load() {
+    state.layers = utils.loadJSON(STORAGE_KEYS.layers, []);
+    if (state.layers.length === 0) {
+      this.createDefault();
+    }
+    state.activeLayerId = state.layers[0]?.id || null;
+  },
+  
+  createDefault() {
+    const defaultLayer = {
+      id: `layer_${Date.now()}`,
+      name: "Calque 1",
+      visible: true,
+      locked: false,
+      strokes: [],
+    };
+    state.layers = [defaultLayer];
+    state.activeLayerId = defaultLayer.id;
+    this.save();
+  },
+  
+  save() {
+    utils.saveJSON(STORAGE_KEYS.layers, state.layers);
+  },
+  
+  add(name) {
+    const layer = {
+      id: `layer_${Date.now()}`,
+      name: name || `Calque ${state.layers.length + 1}`,
+      visible: true,
+      locked: false,
+      strokes: [],
+    };
+    state.layers.push(layer);
+    this.save();
+    this.renderList();
+  },
+  
+  renderList() {
+    const list = $("#layerList");
+    list.innerHTML = "";
+    state.layers.forEach((layer, idx) => {
+      const item = document.createElement("div");
+      item.className = `layer-item ${layer.id === state.activeLayerId ? "is-active" : ""}`;
+      item.innerHTML = `
+        <div class="layer-name">${layer.name}</div>
+        <div class="layer-actions">
+          <button class="btn-ghost btn-tiny" data-action="toggle" data-idx="${idx}">${layer.visible ? "👁️" : "👁️‍🗨️"}</button>
+          <button class="btn-ghost btn-tiny" data-action="delete" data-idx="${idx}">🗑️</button>
+        </div>
+      `;
+      list.appendChild(item);
+    });
+  },
+};
+
+// Feature 3: Stamps
+const stamps = {
+  load() {
+    state.stamps = utils.loadJSON(STORAGE_KEYS.stamps, []);
+    this.renderList();
+  },
+  
+  save() {
+    utils.saveJSON(STORAGE_KEYS.stamps, state.stamps);
+  },
+  
+  add(name, data) {
+    const stamp = {
+      id: `stamp_${Date.now()}`,
+      name: name || `Stamp ${state.stamps.length + 1}`,
+      data: data || null,
+      color: els.strokeColor.value,
+      createdAt: utils.nowMs(),
+    };
+    state.stamps.push(stamp);
+    this.save();
+    this.renderList();
+  },
+  
+  renderList() {
+    const list = $("#stampList");
+    list.innerHTML = "";
+    state.stamps.forEach((stamp, idx) => {
+      const item = document.createElement("div");
+      item.className = "stamp-item";
+      item.innerHTML = `
+        <div class="stamp-name">${stamp.name}</div>
+        <button class="btn-ghost btn-tiny" data-action="use" data-idx="${idx}">Utiliser</button>
+      `;
+      list.appendChild(item);
+    });
+  },
+};
+
+// Feature 11: Import URL
+const urlImport = {
+  async load(url) {
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const reader = new FileReader();
+      reader.onload = () => {
+        plans.add(`Image depuis URL`, reader.result);
+      };
+      reader.readAsDataURL(blob);
+    } catch (err) {
+      alert("Erreur lors du chargement de l'image: " + err.message);
+    }
+  },
+};
+
+// Feature 12: Thème
+const theme = {
+  load() {
+    state.theme = utils.loadJSON(STORAGE_KEYS.theme, "dark");
+    this.apply(state.theme);
+  },
+  
+  apply(themeName) {
+    document.documentElement.setAttribute("data-theme", themeName);
+    $("#themeSelect").value = themeName;
+  },
+  
+  save() {
+    utils.saveJSON(STORAGE_KEYS.theme, state.theme);
+  },
+};
+
+// Feature 13: Templates
+const templates = {
+  load() {
+    return utils.loadJSON(STORAGE_KEYS.templates, []);
+  },
+  
+  save(template) {
+    const templates = this.load();
+    templates.push({
+      id: `template_${Date.now()}`,
+      name: template.name,
+      data: template.data,
+      createdAt: utils.nowMs(),
+    });
+    utils.saveJSON(STORAGE_KEYS.templates, templates);
+  },
+  
+  renderList() {
+    const templates = this.load();
+    const list = $("#templateList");
+    list.innerHTML = "";
+    templates.forEach((tpl, idx) => {
+      const item = document.createElement("div");
+      item.className = "template-item";
+      item.innerHTML = `<div>${tpl.name}</div><button class="btn-ghost btn-tiny" data-action="load" data-idx="${idx}">Charger</button>`;
+      list.appendChild(item);
+    });
+  },
+};
+
+// Feature 10: Présentation
+const presentation = {
+  start() {
+    state.presentation.active = true;
+    state.presentation.currentPage = state.plans.findIndex(p => p.id === state.activePlanId);
+    $("#presentationMode").classList.remove("is-hidden");
+    this.updatePageInfo();
+  },
+  
+  stop() {
+    state.presentation.active = false;
+    $("#presentationMode").classList.add("is-hidden");
+  },
+  
+  next() {
+    if (state.presentation.currentPage < state.plans.length - 1) {
+      state.presentation.currentPage++;
+      plans.select(state.plans[state.presentation.currentPage].id);
+      this.updatePageInfo();
+    }
+  },
+  
+  prev() {
+    if (state.presentation.currentPage > 0) {
+      state.presentation.currentPage--;
+      plans.select(state.plans[state.presentation.currentPage].id);
+      this.updatePageInfo();
+    }
+  },
+  
+  updatePageInfo() {
+    $("#presentationPageInfo").textContent = `Page ${state.presentation.currentPage + 1}/${state.plans.length}`;
+  },
+};
+
+// Feature 14: Historique
+const history = {
+  add(action) {
+    state.history.push({
+      timestamp: utils.nowMs(),
+      action,
+      data: JSON.parse(JSON.stringify(state.annotations)),
+    });
+    state.historyIndex = state.history.length - 1;
+    // Keep only last 50 entries
+    if (state.history.length > 50) {
+      state.history.shift();
+    }
+    utils.saveJSON(STORAGE_KEYS.history, state.history);
+  },
+  
+  load() {
+    state.history = utils.loadJSON(STORAGE_KEYS.history, []);
+    state.historyIndex = state.history.length - 1;
+  },
+};
+
+// Feature 15: Annotations Vocales (simplifié - nécessite permissions navigateur)
+const audioAnnotations = {
+  async record() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Simplified - would need MediaRecorder API
+      alert("Enregistrement audio (fonctionnalité simplifiée)");
+    } catch (err) {
+      alert("Permission microphone refusée");
+    }
+  },
+};
+
+// ============================================================================
 // EVENT HANDLERS
 // ============================================================================
 
@@ -1470,20 +2202,31 @@ function bindEvents() {
     if (ev.key === "Enter" && !ev.shiftKey) {
       ev.preventDefault();
       if (state.textEditing) {
-        state.textEditing.text = els.textInput.value;
         canvas.finishTextEdit();
       }
     } else if (ev.key === "Escape") {
+      ev.preventDefault();
       state.textEditing = null;
       els.textInputOverlay.classList.add("is-hidden");
+      canvas.render();
+    }
+  });
+
+  els.textInput.addEventListener("input", () => {
+    // Update preview in real-time if needed
+    if (state.textEditing) {
+      state.textEditing.text = els.textInput.value;
+      canvas.render();
     }
   });
 
   els.textInput.addEventListener("blur", () => {
-    if (state.textEditing) {
-      state.textEditing.text = els.textInput.value;
-      canvas.finishTextEdit();
-    }
+    // Use setTimeout to allow click events to process first
+    setTimeout(() => {
+      if (state.textEditing) {
+        canvas.finishTextEdit();
+      }
+    }, 200);
   });
 
   // Ruler
@@ -1497,6 +2240,149 @@ function bindEvents() {
   $("#btnRedo").addEventListener("click", () => canvas.redo());
   $("#btnClear").addEventListener("click", () => canvas.clearAnnotations());
   $("#btnExport").addEventListener("click", () => canvas.exportPNG());
+  $("#btnExportPDF").addEventListener("click", () => exportManager.exportPDF());
+  $("#btnExportSVG").addEventListener("click", () => exportManager.exportSVG());
+  
+  // Feature 5: Zoom
+  $("#btnZoomIn").addEventListener("click", () => zoom.zoomIn());
+  $("#btnZoomOut").addEventListener("click", () => zoom.zoomOut());
+  $("#btnZoomFit").addEventListener("click", () => zoom.zoomFit());
+  
+  // Feature 4: Légende
+  $("#btnLegend").addEventListener("click", () => legend.show());
+  $("#btnCloseLegend").addEventListener("click", () => $("#legendModal").classList.add("is-hidden"));
+  
+  // Feature 8: Recherche
+  $("#btnSearch").addEventListener("click", () => search.show());
+  $("#btnCloseSearch").addEventListener("click", () => $("#searchModal").classList.add("is-hidden"));
+  $("#searchInput").addEventListener("input", (ev) => {
+    const results = search.perform(ev.target.value);
+    search.displayResults(results);
+  });
+  
+  // Feature 9: Filtres
+  $("#btnFilters").addEventListener("click", () => $("#filtersModal").classList.remove("is-hidden"));
+  $("#btnCloseFilters").addEventListener("click", () => $("#filtersModal").classList.add("is-hidden"));
+  $("#btnResetFilters").addEventListener("click", () => imageFilters.reset());
+  $("#brightnessSlider").addEventListener("input", (ev) => {
+    state.imageFilters.brightness = Number(ev.target.value);
+    $("#brightnessValue").textContent = ev.target.value;
+    imageFilters.apply();
+  });
+  $("#contrastSlider").addEventListener("input", (ev) => {
+    state.imageFilters.contrast = Number(ev.target.value);
+    $("#contrastValue").textContent = ev.target.value;
+    imageFilters.apply();
+  });
+  $("#saturationSlider").addEventListener("input", (ev) => {
+    state.imageFilters.saturation = Number(ev.target.value);
+    $("#saturationValue").textContent = ev.target.value;
+    imageFilters.apply();
+  });
+  $("#invertColors").addEventListener("change", (ev) => {
+    state.imageFilters.invert = ev.target.checked;
+    imageFilters.apply();
+  });
+  
+  // Feature 10: Présentation
+  $("#btnPresentation").addEventListener("click", () => presentation.start());
+  $("#btnExitPresentation").addEventListener("click", () => presentation.stop());
+  $("#btnNextPage").addEventListener("click", () => presentation.next());
+  $("#btnPrevPage").addEventListener("click", () => presentation.prev());
+  
+  // Feature 2: Échelle
+  $("#scaleEnabled").addEventListener("change", (ev) => {
+    state.planScale.enabled = ev.target.checked;
+  });
+  $("#scaleRatio").addEventListener("input", (ev) => {
+    state.planScale.ratio = Number(ev.target.value) || 1;
+  });
+  $("#scaleUnit").addEventListener("change", (ev) => {
+    state.planScale.unit = ev.target.value;
+  });
+  
+  // Feature 3: Stamps
+  $("#btnAddStamp").addEventListener("click", () => {
+    const name = prompt("Nom du stamp:");
+    if (name) stamps.add(name);
+  });
+  $("#stampList").addEventListener("click", (ev) => {
+    const btn = ev.target.closest("[data-action]");
+    if (!btn) return;
+    const idx = parseInt(btn.dataset.idx);
+    if (btn.dataset.action === "use") {
+      state.selectedStamp = state.stamps[idx];
+      toolbar.setTool("stamp");
+    }
+  });
+  
+  // Feature 7: Calques
+  $("#btnAddLayer").addEventListener("click", () => {
+    const name = prompt("Nom du calque:");
+    if (name) layers.add(name);
+  });
+  $("#layerList").addEventListener("click", (ev) => {
+    const btn = ev.target.closest("[data-action]");
+    if (!btn) return;
+    const idx = parseInt(btn.dataset.idx);
+    if (btn.dataset.action === "toggle") {
+      state.layers[idx].visible = !state.layers[idx].visible;
+      layers.save();
+      layers.renderList();
+      canvas.render();
+    } else if (btn.dataset.action === "delete" && confirm("Supprimer ce calque?")) {
+      state.layers.splice(idx, 1);
+      layers.save();
+      layers.renderList();
+    }
+  });
+  
+  // Feature 11: Import URL
+  $("#btnLoadUrl").addEventListener("click", () => {
+    const url = $("#imageUrl").value.trim();
+    if (url) urlImport.load(url);
+  });
+  
+  // Feature 12: Thème
+  $("#themeSelect").addEventListener("change", (ev) => {
+    state.theme = ev.target.value;
+    theme.apply(state.theme);
+    theme.save();
+  });
+  
+  // Feature 13: Templates
+  $("#btnSaveTemplate").addEventListener("click", () => {
+    const name = prompt("Nom du template:");
+    if (name) {
+      templates.save({
+        name,
+        data: { plans: state.plans, annotations: state.annotations },
+      });
+      templates.renderList();
+    }
+  });
+  $("#templateList").addEventListener("click", (ev) => {
+    const btn = ev.target.closest("[data-action]");
+    if (!btn) return;
+    const idx = parseInt(btn.dataset.idx);
+    if (btn.dataset.action === "load") {
+      const tpls = templates.load();
+      if (tpls[idx]) {
+        state.plans = tpls[idx].data.plans || [];
+        state.annotations = tpls[idx].data.annotations || {};
+        plans.renderList();
+        canvas.render();
+      }
+    }
+  });
+  
+  // Feature 1: Formes - contrôles
+  $("#shapeFilled").addEventListener("change", () => {
+    if (state.previewShape) state.previewShape.filled = $("#shapeFilled").checked;
+  });
+  $("#shapeRadius").addEventListener("input", (ev) => {
+    if (state.previewShape) state.previewShape.radius = Number(ev.target.value);
+  });
 
   // File upload
   $("#btnUpload").addEventListener("click", () => $("#fileInput").click());
@@ -1676,11 +2562,17 @@ function init() {
   plans.load();
   notes.load();
   alliances.load();
+  layers.load();
+  stamps.load();
+  theme.load();
+  history.load();
+  templates.renderList();
   bindEvents();
   security.initAntiScreenshot();
   canvas.resize();
   plans.renderList();
   alliances.renderList();
+  layers.renderList();
   if (state.activePlanId) {
     const plan = state.plans.find((p) => p.id === state.activePlanId);
     if (plan) canvas.loadImage(plan.dataUrl);
@@ -1692,6 +2584,7 @@ function init() {
   toolbar.updateTextBgOpacity();
   toolbar.updateToolControls();
   canvas.renderRuler();
+  imageFilters.apply();
 }
 
 // Start app

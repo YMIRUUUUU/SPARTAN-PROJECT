@@ -77,6 +77,79 @@
             <p>Aucune alliance</p>
           </div>
         </section>
+
+        <!-- Feature 2: Échelle de mesure -->
+        <section class="panel">
+          <h2 class="panel-title">Échelle</h2>
+          <div class="row">
+            <label class="label"><input type="checkbox" id="scaleEnabled"> Activer</label>
+          </div>
+          <div class="row">
+            <input id="scaleRatio" type="number" class="input" placeholder="Ratio (px/unité)" step="0.1" min="0.1">
+          </div>
+          <div class="row">
+            <select id="scaleUnit" class="input input-small">
+              <option value="m">Mètres</option>
+              <option value="km">Kilomètres</option>
+              <option value="cm">Centimètres</option>
+              <option value="ft">Pieds</option>
+            </select>
+          </div>
+        </section>
+
+        <!-- Feature 3: Stamps -->
+        <section class="panel">
+          <h2 class="panel-title">Stamps</h2>
+          <div class="row">
+            <button id="btnAddStamp" class="btn btn-primary">➕ Créer stamp</button>
+          </div>
+          <div id="stampList" class="stamp-list empty">
+            <p>Aucun stamp</p>
+          </div>
+        </section>
+
+        <!-- Feature 7: Calques -->
+        <section class="panel">
+          <h2 class="panel-title">Calques</h2>
+          <div class="row">
+            <button id="btnAddLayer" class="btn btn-primary">➕ Nouveau calque</button>
+          </div>
+          <div id="layerList" class="layer-list empty">
+            <p>Aucun calque</p>
+          </div>
+        </section>
+
+        <!-- Feature 11: Import URL -->
+        <section class="panel">
+          <h2 class="panel-title">Import</h2>
+          <div class="row">
+            <input id="imageUrl" type="url" class="input" placeholder="URL de l'image">
+            <button id="btnLoadUrl" class="btn btn-primary">📥 Charger</button>
+          </div>
+        </section>
+
+        <!-- Feature 12: Thème -->
+        <section class="panel">
+          <h2 class="panel-title">Apparence</h2>
+          <div class="row">
+            <select id="themeSelect" class="input">
+              <option value="dark">Sombre</option>
+              <option value="light">Clair</option>
+              <option value="custom">Personnalisé</option>
+            </select>
+          </div>
+        </section>
+
+        <!-- Feature 13: Templates -->
+        <section class="panel">
+          <h2 class="panel-title">Templates</h2>
+          <div class="row">
+            <button id="btnSaveTemplate" class="btn btn-primary">💾 Sauver template</button>
+          </div>
+          <div id="templateList" class="template-list empty">
+            <p>Aucun template</p>
+          </div>
+        </section>
       </aside>
 
       <!-- Main Workspace -->
@@ -90,8 +163,13 @@
               <button class="toolbtn" data-tool="line" title="Trait">📏 Trait</button>
               <button class="toolbtn" data-tool="arrow" title="Flèche">➡️ Flèche</button>
               <button class="toolbtn" data-tool="text" title="Texte">📝 Texte</button>
+              <button class="toolbtn" data-tool="rect" title="Rectangle">⬜ Rectangle</button>
+              <button class="toolbtn" data-tool="circle" title="Cercle">⭕ Cercle</button>
+              <button class="toolbtn" data-tool="polygon" title="Polygone">🔷 Polygone</button>
               <button class="toolbtn" data-tool="eraser" title="Gomme vectorielle">🧹 Vectoriel</button>
               <button class="toolbtn" data-tool="eraser-pixel" title="Gomme pixel">🎨 Pixel</button>
+              <button class="toolbtn" data-tool="measure" title="Mesure">📏 Mesure</button>
+              <button class="toolbtn" data-tool="stamp" title="Stamp">🏷️ Stamp</button>
             </div>
             <div class="toolgroup" id="strokeControls">
               <label class="label" for="strokeSize">Taille</label>
@@ -128,13 +206,30 @@
             <div class="toolgroup">
               <button id="btnRuler" class="btn btn-ghost" title="Afficher la règle">📐 Règle</button>
             </div>
+            <div class="toolgroup" id="shapeControls" style="display: none;">
+              <label class="label"><input type="checkbox" id="shapeFilled"> Rempli</label>
+              <label class="label"><input type="number" id="shapeRadius" min="0" max="50" value="0" style="width: 50px;"> Rayon</label>
+            </div>
+            <div class="toolgroup">
+              <button id="btnZoomIn" class="btn btn-ghost" title="Zoom +">🔍+</button>
+              <button id="btnZoomOut" class="btn btn-ghost" title="Zoom -">🔍-</button>
+              <button id="btnZoomFit" class="btn btn-ghost" title="Ajuster">📐 Fit</button>
+            </div>
             <div class="toolgroup">
               <button id="btnUndo" class="btn btn-ghost" title="Annuler">↶ Undo</button>
               <button id="btnRedo" class="btn btn-ghost" title="Refaire">↷ Redo</button>
               <button id="btnClear" class="btn btn-ghost" title="Effacer tout">🗑️ Effacer</button>
             </div>
             <div class="toolgroup">
-              <button id="btnExport" class="btn btn-primary" title="Exporter le plan annoté">💾 Exporter PNG</button>
+              <button id="btnExport" class="btn btn-primary" title="Exporter">💾 Export</button>
+              <button id="btnExportPDF" class="btn btn-ghost" title="Export PDF">📄 PDF</button>
+              <button id="btnExportSVG" class="btn btn-ghost" title="Export SVG">📐 SVG</button>
+            </div>
+            <div class="toolgroup">
+              <button id="btnLegend" class="btn btn-ghost" title="Légende">📊 Légende</button>
+              <button id="btnSearch" class="btn btn-ghost" title="Recherche">🔍 Recherche</button>
+              <button id="btnFilters" class="btn btn-ghost" title="Filtres image">🎨 Filtres</button>
+              <button id="btnPresentation" class="btn btn-ghost" title="Présentation">📱 Présentation</button>
             </div>
           </div>
 
@@ -155,7 +250,7 @@
             </div>
             <!-- Text input overlay -->
             <div id="textInputOverlay" class="text-input-overlay is-hidden">
-              <input id="textInput" type="text" placeholder="Tapez votre texte..." class="text-input">
+              <textarea id="textInput" placeholder="Tapez votre texte... (Entrée pour valider, Échap pour annuler)" class="text-input"></textarea>
             </div>
           </div>
         </div>
@@ -182,6 +277,67 @@
         </div>
         <div id="loginError" class="error is-hidden">Secret invalide ou clé expirée</div>
       </form>
+    </div>
+  </div>
+
+  <!-- Feature 4: Légende Modal -->
+  <div id="legendModal" class="modal is-hidden">
+    <div class="modal-card">
+      <h2 class="modal-title">Légende</h2>
+      <div id="legendContent"></div>
+      <div class="form-group">
+        <button id="btnCloseLegend" class="btn btn-primary btn-block">Fermer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Feature 8: Recherche Modal -->
+  <div id="searchModal" class="modal is-hidden">
+    <div class="modal-card">
+      <h2 class="modal-title">Recherche</h2>
+      <div class="form-group">
+        <input id="searchInput" class="input" type="text" placeholder="Rechercher dans les annotations...">
+      </div>
+      <div id="searchResults" class="search-results"></div>
+      <div class="form-group">
+        <button id="btnCloseSearch" class="btn btn-primary btn-block">Fermer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Feature 9: Filtres Image Modal -->
+  <div id="filtersModal" class="modal is-hidden">
+    <div class="modal-card">
+      <h2 class="modal-title">Filtres Image</h2>
+      <div class="form-group">
+        <label class="form-label">Luminosité: <span id="brightnessValue">100</span>%</label>
+        <input id="brightnessSlider" type="range" min="0" max="200" value="100">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Contraste: <span id="contrastValue">100</span>%</label>
+        <input id="contrastSlider" type="range" min="0" max="200" value="100">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Saturation: <span id="saturationValue">100</span>%</label>
+        <input id="saturationSlider" type="range" min="0" max="200" value="100">
+      </div>
+      <div class="form-group">
+        <label class="form-label"><input type="checkbox" id="invertColors"> Inverser les couleurs</label>
+      </div>
+      <div class="form-group">
+        <button id="btnResetFilters" class="btn btn-ghost">Réinitialiser</button>
+        <button id="btnCloseFilters" class="btn btn-primary">Fermer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Feature 10: Présentation Mode -->
+  <div id="presentationMode" class="presentation-mode is-hidden">
+    <div class="presentation-controls">
+      <button id="btnPrevPage" class="btn btn-ghost">◀ Précédent</button>
+      <span id="presentationPageInfo">Page 1/1</span>
+      <button id="btnNextPage" class="btn btn-ghost">Suivant ▶</button>
+      <button id="btnExitPresentation" class="btn btn-primary">Quitter</button>
     </div>
   </div>
 
